@@ -93,6 +93,22 @@ def fetch_blend_urls_from_repo(repo):
         print("  獲取失敗 {0}: {1}".format(repo, e))
     return urls
 
+def load_cached_urls():
+    if URL_CACHE_FILE.exists():
+        try:
+            with open(URL_CACHE_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except:
+            pass
+    return None
+
+def save_cached_urls(urls):
+    try:
+        with open(URL_CACHE_FILE, "w", encoding="utf-8") as f:
+            json.dump(urls, f)
+    except:
+        pass
+
 def fetch_all_urls():
     cached = load_cached_urls()
     if cached:
