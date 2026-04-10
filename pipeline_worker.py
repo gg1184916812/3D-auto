@@ -11,6 +11,8 @@ SHARED_DOWNLOAD_LOG = Path("./shared_downloads.txt")
 GROQ_KEY = os.environ.get("GROQ_KEY", "")
 MISTRAL_KEY = os.environ.get("MISTRAL_KEY", "")
 GEMINI_KEY = os.environ.get("GEMINI_KEY", "")
+OLLAMA_URL = os.environ.get("OLLAMA_URL", "")
+OLLAMA_PASSWORD = os.environ.get("OLLAMA_PASSWORD", "")
 GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
 
 HEADERS = {"User-Agent": "Mozilla/5.0"}
@@ -207,6 +209,8 @@ class Pipeline:
             self.manager = APIKeyManager([k for k in [MISTRAL_KEY] if k])
         elif api_name == "gemini":
             self.manager = APIKeyManager([k for k in [GEMINI_KEY] if k])
+        elif api_name == "ollama":
+            self.manager = APIKeyManager([OLLAMA_URL] if OLLAMA_URL else [])
         self.all_urls = []
         self.processed_count = 0
 
@@ -474,6 +478,16 @@ print("EXTRACTED:" + str(found))
                 elif self.api_name == "gemini":
                     url = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
                     data = {"model": "gemini-2.0-flash", "messages": [{"role": "user", "content": prompt}], "temperature": 0.3}
+                elif self.api_name == "ollama":
+                    url = "{0}/api/chat".format(OLLAMA_URL.rstrip("/"))
+                    data = {"model": "llama3.2", "messages": [{"role": "user", "content": prompt}], "stream": False}
+                    headers = {"Content-Type": "application/json"}
+                    resp = requests.post(url, json=data, headers=headers, timeout=60)
+                    if resp.status_code == 200:
+                        return resp.json().get("message", {}).get("content", "").strip()
+                    else:
+                        self.log("  API 錯誤 {0}: {1}".format(resp.status_code, resp.text[:100]))
+                        return None
                 headers = {"Authorization": "Bearer {0}".format(api_key), "Content-Type": "application/json"}
                 resp = requests.post(url, json=data, headers=headers, timeout=30)
                 if resp.status_code == 200:
