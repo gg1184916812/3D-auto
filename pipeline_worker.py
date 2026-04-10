@@ -5,6 +5,8 @@ from pathlib import Path
 BLENDER_EXE = r"C:\Program Files\Blender Foundation\Blender 4.5\blender.exe"
 OUTPUT_FILE = Path("./training_dataset.jsonl")
 URL_CACHE_FILE = Path("./url_cache.json")
+SHARED_DOWNLOADS_DIR = Path("./shared_downloads")
+SHARED_DOWNLOAD_LOG = Path("./shared_downloads.txt")
 
 GROQ_KEY = os.environ.get("GROQ_KEY", "")
 MISTRAL_KEY = os.environ.get("MISTRAL_KEY", "")
@@ -15,6 +17,8 @@ HEADERS = {"User-Agent": "Mozilla/5.0"}
 if GITHUB_TOKEN:
     HEADERS["Authorization"] = "token {0}".format(GITHUB_TOKEN)
 
+SHARED_DOWNLOADS_DIR.mkdir(exist_ok=True)
+
 REPOS_WITH_GEONODES = [
     "BradyAJohnston/MolecularNodes",
     "node-dojo/dojo-recursive-bins",
@@ -23,34 +27,23 @@ REPOS_WITH_GEONODES = [
     "rbarbosa51/GeometryNodesByTutorials",
     "cgvirus/blender-geometry-nodes-collection",
     "Rideu/generative-blender",
-    "IRCSS/Blender-Geometry-Node-French-Houses",
-    "IRCSS/Trees-With-Geometry-Nodes-Blender",
-    "RanmanEmpire/RM_SubdivisionSurface",
-    "RanmanEmpire/RM_CurveMorph",
-    "fletchgraham/fletchnodes",
-    "Tams3d/T3D-GN-Presets",
-    "BlenderDev/blender-geometry-nodes",
-    "MACHIN3tools/MACHIN3",
-    "simo-esi/Blender-Geometry-Nodes-Collection",
 ]
 
 KNOWN_WORKING_URLS = [
     "https://raw.githubusercontent.com/BradyAJohnston/MolecularNodes/HEAD/molecularnodes/assets/node_data_file.blend",
     "https://raw.githubusercontent.com/BradyAJohnston/MolecularNodes/HEAD/molecularnodes/assets/template/startup.blend",
+    "https://raw.githubusercontent.com/BradyAJohnston/MolecularNodes/HEAD/tests/data/blendfiles/suzanne.blend",
     "https://raw.githubusercontent.com/node-dojo/dojo-recursive-bins/HEAD/Dojo%20Bin%20Generator_recursive%202%20step_v0.1.1.blend",
     "https://raw.githubusercontent.com/node-dojo/dojo-recursive-bins/HEAD/Dojo%20Bin%20Generator_recursive%20red%20bins_v.0.1.1.blend",
     "https://raw.githubusercontent.com/al1brn/geonodes/HEAD/generation/gen%20V5.blend",
     "https://raw.githubusercontent.com/al1brn/geonodes/HEAD/generation/gen%20auto.blend",
-    "https://raw.githubusercontent.com/al1brn/geonodes/HEAD/generation/gendoc.blend",
     "https://raw.githubusercontent.com/vevenom/pytorchgeonodes/HEAD/ShapeProgramsDataset/bed.blend",
     "https://raw.githubusercontent.com/vevenom/pytorchgeonodes/HEAD/ShapeProgramsDataset/cabinet.blend",
-    "https://raw.githubusercontent.com/vevenom/pytorchgeonodes/HEAD/ShapeProgramsDataset/cabinet_div_boards_vis.blend",
     "https://raw.githubusercontent.com/vevenom/pytorchgeonodes/HEAD/ShapeProgramsDataset/chair.blend",
     "https://raw.githubusercontent.com/vevenom/pytorchgeonodes/HEAD/ShapeProgramsDataset/chair2.blend",
-    "https://raw.githubusercontent.com/vevenom/pytorchgeonodes/HEAD/ShapeProgramsDataset/chair_safe.blend",
-    "https://raw.githubusercontent.com/vevenom/pytorchgeonodes/HEAD/ShapeProgramsDataset/cube.blend",
     "https://raw.githubusercontent.com/vevenom/pytorchgeonodes/HEAD/ShapeProgramsDataset/sofa.blend",
     "https://raw.githubusercontent.com/vevenom/pytorchgeonodes/HEAD/ShapeProgramsDataset/table.blend",
+    "https://raw.githubusercontent.com/vevenom/pytorchgeonodes/HEAD/ShapeProgramsDataset/cube.blend",
     "https://raw.githubusercontent.com/vevenom/pytorchgeonodes/HEAD/ShapeProgramsDataset/test.blend",
 ]
 
@@ -58,6 +51,26 @@ CHAPTER_URLS = []
 for chap in range(1, 11):
     for suffix in ["Final", "Start"]:
         CHAPTER_URLS.append(f"https://raw.githubusercontent.com/rbarbosa51/GeometryNodesByTutorials/HEAD/Chapter{chap:02d}/Chapter{chap:02d}{suffix}.blend")
+
+BLENDER_DEMO_URLS = [
+    "https://download.blender.org/demo/geometry-nodes/4D_Gaussian_Splatting-Nunchucks_and_cat.blend",
+    "https://download.blender.org/demo/geometry-nodes/SDF_mixer_kitbukoros.blend",
+    "https://download.blender.org/demo/geometry-nodes/abstract_monkey_geometry-nodes_demo.blend",
+    "https://download.blender.org/demo/geometry-nodes/accumulate_field.blend",
+    "https://download.blender.org/demo/geometry-nodes/ball-in-grass_geometry-nodes_demo.blend",
+    "https://download.blender.org/demo/geometry-nodes/chocolate.blend",
+    "https://download.blender.org/demo/geometry-nodes/cubic-whirlpool_geometry-nodes-demo.blend",
+    "https://download.blender.org/demo/geometry-nodes/field_at_index.blend",
+    "https://download.blender.org/demo/geometry-nodes/flower_scattering.blend",
+    "https://download.blender.org/demo/geometry-nodes/food_geometry-nodes_demo.blend",
+    "https://download.blender.org/demo/geometry-nodes/instance_attribtues.blend",
+    "https://download.blender.org/demo/geometry-nodes/procedural_vine.blend",
+    "https://download.blender.org/demo/geometry-nodes/scatter_demo.blend",
+    "https://download.blender.org/demo/geometry-nodes/hair_strands.blend",
+    "https://download.blender.org/demo/geometry-nodes/ocean_waves.blend",
+    "https://download.blender.org/demo/geometry-nodes/city_generator.blend",
+    "https://download.blender.org/demo/geometry-nodes/terrain_gen.blend",
+]
 
 def fetch_blend_urls_from_repo(repo):
     urls = []
@@ -91,6 +104,16 @@ def save_cached_urls(urls):
     except:
         pass
 
+def get_shared_downloaded():
+    if SHARED_DOWNLOAD_LOG.exists():
+        with open(SHARED_DOWNLOAD_LOG, "r", encoding="utf-8") as f:
+            return set(line.strip() for line in f if line.strip())
+    return set()
+
+def mark_shared_downloaded(url):
+    with open(SHARED_DOWNLOAD_LOG, "a", encoding="utf-8") as f:
+        f.write(url + "\n")
+
 def fetch_all_urls():
     cached = load_cached_urls()
     if cached:
@@ -99,6 +122,7 @@ def fetch_all_urls():
     
     all_urls = list(KNOWN_WORKING_URLS)
     all_urls.extend(CHAPTER_URLS)
+    all_urls.extend(BLENDER_DEMO_URLS)
     
     print("從 GitHub 倉庫搜索 blend 檔案...")
     for repo in REPOS_WITH_GEONODES:
@@ -197,6 +221,11 @@ class Pipeline:
         if not fname.endswith(".blend"):
             fname += ".blend"
         fname = urllib.parse.unquote(fname)
+        
+        shared_path = SHARED_DOWNLOADS_DIR / fname
+        if shared_path.exists() and shared_path.stat().st_size > 1000:
+            return shared_path
+        
         tmp_path = self.temp_dir / fname
         try:
             encoded_url = urllib.parse.quote(url, safe=':/?&=#')
@@ -214,7 +243,9 @@ class Pipeline:
                 if downloaded < 1000:
                     tmp_path.unlink()
                     return None
-                return tmp_path
+                shutil.copy2(tmp_path, shared_path)
+                mark_shared_downloaded(url)
+                return shared_path
         except Exception as e:
             self.log("下載失敗: {0}".format(e))
             return None
@@ -230,6 +261,13 @@ try:
 except Exception as e:
     print("OPEN_ERROR:" + str(e))
     sys.exit(1)
+
+print("FILE_LOADED:" + blend_file)
+print("NODE_GROUPS_COUNT:" + str(len(bpy.data.node_groups)))
+
+for ng in bpy.data.node_groups:
+    print("NG_TYPE:" + ng.type + ":" + ng.name)
+
 def tree_to_python(tree):
     lines = ["import bpy", "from bpy import data as bpy.data", "", "def create_node_tree():", "    tree = bpy.data.node_groups.new('" + tree.name.replace("'", "\\'") + "', 'GeometryNodeTree')"]
     for n in tree.nodes:
@@ -257,11 +295,13 @@ def tree_to_python(tree):
             lines.append("    links.new(" + fn + ".outputs[\"" + link.from_socket.name + "\"], " + tn + ".inputs[\"" + link.to_socket.name + "\"])")
     lines += ["", "    return tree", "", "create_node_tree()"]
     return "\\n".join(lines)
+
 def summarize(tree):
     nt = {{}}
     for n in tree.nodes:
         nt[n.type] = nt.get(n.type, 0) + 1
     return {{"node_count": len(tree.nodes), "link_count": len(tree.links), "node_types": nt, "has_animation": any(n.type == "INPUT_SCENE_TIME" for n in tree.nodes), "has_noise": any("NOISE" in n.type for n in tree.nodes), "has_instancing": any(n.type == "INSTANCE_ON_POINTS" for n in tree.nodes), "has_distribution": any(n.type == "DISTRIBUTE_POINTS_ON_FACES" for n in tree.nodes), "has_math": any(n.type == "MATH" for n in tree.nodes), "has_material": any(n.type == "SET_MATERIAL" for n in tree.nodes)}}
+
 found = 0
 for ng in bpy.data.node_groups:
     if ng.type != "GEOMETRY": continue
@@ -269,16 +309,21 @@ for ng in bpy.data.node_groups:
     try:
         results.append({{"tree_name": ng.name, "summary": summarize(ng), "python_code": tree_to_python(ng)}})
         found += 1
+        print("FOUND_GN:" + ng.name)
     except: pass
+
 with open(output_json, "w", encoding="utf-8") as f:
     json.dump(results, f, ensure_ascii=False)
 print("EXTRACTED:" + str(found))
 '''.format(output_json=str(blend_path.with_suffix('.json')), blend_file=str(blend_path))
+        
         with open(self.temp_dir / "extract_nodes.py", "w", encoding="utf-8") as f:
             f.write(script)
         try:
             cmd = [BLENDER_EXE, "--background", "--python", str(self.temp_dir / "extract_nodes.py"), "--"]
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=180, encoding="utf-8", errors="replace")
+            
+            debug_info = []
             for line in result.stdout.splitlines():
                 if line.startswith("EXTRACTED:"):
                     count = int(line.split(":")[1])
@@ -289,10 +334,20 @@ print("EXTRACTED:" + str(found))
                             trees = json.load(f)
                         return trees
                     return []
-                if line.startswith("OPEN_ERROR:"):
+                elif line.startswith("OPEN_ERROR:"):
                     self.log("  Blender 打開檔案失敗: {0}".format(line.split(":", 1)[1]))
                     return []
-            self.log("  Blender 未找到幾何節點樹")
+                elif line.startswith("FILE_LOADED:") or line.startswith("NODE_GROUPS_COUNT:") or line.startswith("NG_TYPE:") or line.startswith("FOUND_GN:"):
+                    debug_info.append(line)
+            
+            for dbg in debug_info:
+                self.log("  DEBUG: {0}".format(dbg))
+            
+            if not debug_info:
+                self.log("  Blender 無輸出")
+                self.log("  STDERR: {0}".format(result.stderr[:500] if result.stderr else ""))
+            else:
+                self.log("  Blender 未找到幾何節點樹")
             return []
         except subprocess.TimeoutExpired:
             self.log("  Blender 執行逾時 (180秒)")
@@ -375,21 +430,32 @@ print("EXTRACTED:" + str(found))
         print("Blender 路徑: {0}".format(BLENDER_EXE))
         print()
         done_urls = self.load_done()
+        shared_downloaded = get_shared_downloaded()
         print("已處理過: {0} 個 URL".format(len(done_urls)))
+        print("已下載過: {0} 個 URL (共享)".format(len(shared_downloaded)))
         print("動態獲取 URL 中...")
         self.all_urls = fetch_all_urls()
-        pending_urls = [u for u in self.all_urls if u not in done_urls]
-        print("本次待處理: {0} 個 URL".format(len(pending_urls)))
+        
+        pending_urls = []
+        for url in self.all_urls:
+            if url in done_urls:
+                continue
+            if url not in shared_downloaded:
+                pending_urls.append(url)
+        
+        print("本次待下載: {0} 個 URL".format(len(pending_urls)))
+        print("本次待處理: {0} 個 URL".format(len([u for u in self.all_urls if u not in done_urls])))
         print()
+        
         for url in pending_urls:
-            print("處理: {0}".format(url))
+            print("下載: {0}".format(url))
             blend_path = self.download_file(url)
             if not blend_path:
                 self.mark_done(url)
                 continue
+            print("處理: {0}".format(url))
             trees = self.extract_nodes(blend_path)
             try:
-                blend_path.unlink()
                 blend_path.with_suffix('.json').unlink()
             except: pass
             if not trees:
@@ -411,6 +477,44 @@ print("EXTRACTED:" + str(found))
                     print("  描述生成失敗")
                 time.sleep(2)
             self.mark_done(url)
+        
+        remaining_urls = [u for u in self.all_urls if u not in done_urls and u in shared_downloaded]
+        if remaining_urls:
+            print()
+            print("處理共享下載的檔案...")
+            for url in remaining_urls:
+                fname = Path(urllib.parse.urlparse(url).path).name
+                if not fname.endswith(".blend"):
+                    fname += ".blend"
+                fname = urllib.parse.unquote(fname)
+                blend_path = SHARED_DOWNLOADS_DIR / fname
+                if not blend_path.exists():
+                    continue
+                print("處理: {0}".format(url))
+                trees = self.extract_nodes(blend_path)
+                try:
+                    blend_path.with_suffix('.json').unlink()
+                except: pass
+                if not trees:
+                    self.mark_done(url)
+                    continue
+                for tree in trees:
+                    tree_name = tree.get("tree_name", "Unnamed")
+                    summary = tree.get("summary", {})
+                    python_code = tree.get("python_code", "")
+                    print("  節點樹: {0} ({1} nodes)".format(tree_name, summary.get('node_count', 0)))
+                    desc = self.call_api(self.build_prompt(tree_name, summary))
+                    if desc:
+                        print("  描述: {0}...".format(desc[:50]))
+                        entry = {"instruction": desc, "output": python_code, "metadata": {"source_url": url, "tree_name": tree_name, "node_count": summary.get("node_count", 0)}}
+                        if self.save_entry(entry):
+                            self.processed_count += 1
+                            print("  已儲存! 總計: {0}".format(self.processed_count))
+                    else:
+                        print("  描述生成失敗")
+                    time.sleep(2)
+                self.mark_done(url)
+        
         print()
         print("完成! 總共儲存: {0}".format(self.processed_count))
 
