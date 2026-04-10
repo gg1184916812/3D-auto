@@ -1,12 +1,10 @@
 # -*- coding: utf-8 -*-
-import os, sys, json, time, shutil, subprocess, urllib.request, urllib.parse, msvcrt
+import os, sys, json, time, subprocess, urllib.request, urllib.parse, msvcrt
 from pathlib import Path
 
 BLENDER_EXE = r"C:\Program Files\Blender Foundation\Blender 4.5\blender.exe"
 OUTPUT_FILE = Path("./training_dataset.jsonl")
 URL_CACHE_FILE = Path("./url_cache.json")
-SHARED_DOWNLOADS_DIR = Path("./shared_downloads")
-SHARED_DOWNLOAD_LOG = Path("./shared_downloads.txt")
 
 GROQ_KEY = os.environ.get("GROQ_KEY", "")
 MISTRAL_KEY = os.environ.get("MISTRAL_KEY", "")
@@ -18,8 +16,6 @@ GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
 HEADERS = {"User-Agent": "Mozilla/5.0"}
 if GITHUB_TOKEN:
     HEADERS["Authorization"] = "token {0}".format(GITHUB_TOKEN)
-
-SHARED_DOWNLOADS_DIR.mkdir(exist_ok=True)
 
 REPOS_WITH_GEONODES = [
     "BradyAJohnston/MolecularNodes",
@@ -159,16 +155,6 @@ def fetch_all_urls():
     print("總共快取: {0} 個 URL".format(len(all_urls)))
     return all_urls
 
-def get_shared_downloaded():
-    if SHARED_DOWNLOAD_LOG.exists():
-        with open(SHARED_DOWNLOAD_LOG, "r", encoding="utf-8") as f:
-            return set(line.strip() for line in f if line.strip())
-    return set()
-
-def mark_shared_downloaded(url):
-    with open(SHARED_DOWNLOAD_LOG, "a", encoding="utf-8") as f:
-        f.write(url + "\n")
-
 class APIKeyManager:
     def __init__(self, api_keys):
         self.api_keys = api_keys
@@ -257,33 +243,8 @@ class Pipeline:
             fname += ".blend"
         fname = urllib.parse.unquote(fname)
         
-        shared_path = SHARED_DOWNLOADS_DIR / fname
-        if shared_path.exists() and shared_path.stat().st_size > 1000:
-            print("  [已存在，跳過下載]")
-            return shared_path
-        
-        shared_downloaded = get_shared_downloaded()
-        if url in shared_downloaded:
-            print("  [已存在，跳過下載]")
-            return shared_path
-        
-        lock_file = SHARED_DOWNLOADS_DIR / (fname + ".lock")
-        if lock_file.exists():
-            print("  [其他程序在下載中，等待...]")
-            for _ in range(60):
-                time.sleep(1)
-                if shared_path.exists():
-                    print("  [下載完成]")
-                    return shared_path
-                if not lock_file.exists():
-                    break
-            if not shared_path.exists():
-                lock_file.unlink()
-        
         tmp_path = self.temp_dir / fname
         try:
-            with open(lock_file, "w") as lf:
-                lf.write(url)
             encoded_url = urllib.parse.quote(url, safe=':/?&=#')
             req = urllib.request.Request(encoded_url, headers=HEADERS)
             with urllib.request.urlopen(req, timeout=60) as resp:
@@ -303,19 +264,11 @@ class Pipeline:
                 print()
                 if downloaded < 1000:
                     tmp_path.unlink()
-                    lock_file.unlink()
                     return None
-                shutil.copy2(tmp_path, shared_path)
-                mark_shared_downloaded(url)
-                lock_file.unlink()
-                return shared_path
+                return tmp_path
         except Exception as e:
             print()
             self.log("下載失敗: {0}".format(e))
-            try:
-                lock_file.unlink()
-            except:
-                pass
             return None
 
     def extract_nodes(self, blend_path):
@@ -514,21 +467,13 @@ print("EXTRACTED:" + str(found))
         print("Blender 路徑: {0}".format(BLENDER_EXE))
         print()
         done_urls = self.load_done()
-        shared_downloaded = get_shared_downloaded()
         print("已處理過: {0} 個 URL".format(len(done_urls)))
-        print("已下載過: {0} 個 URL (共享)".format(len(shared_downloaded)))
         print("動態獲取 URL 中...")
         self.all_urls = fetch_all_urls()
         
-        pending_urls = []
-        for url in self.all_urls:
-            if url in done_urls:
-                continue
-            if url not in shared_downloaded:
-                pending_urls.append(url)
+        pending_urls = [u for u in self.all_urls if u not in done_urls]
         
-        print("本次待下載: {0} 個 URL".format(len(pending_urls)))
-        print("本次待處理: {0} 個 URL".format(len([u for u in self.all_urls if u not in done_urls])))
+        print("本次待處理: {0} 個 URL".format(len(pending_urls)))
         print()
         
         for url in pending_urls:
@@ -561,43 +506,6 @@ print("EXTRACTED:" + str(found))
                     print("  描述生成失敗")
                 time.sleep(2)
             self.mark_done(url)
-        
-        remaining_urls = [u for u in self.all_urls if u not in done_urls and u in shared_downloaded]
-        if remaining_urls:
-            print()
-            print("處理共享下載的檔案...")
-            for url in remaining_urls:
-                fname = Path(urllib.parse.urlparse(url).path).name
-                if not fname.endswith(".blend"):
-                    fname += ".blend"
-                fname = urllib.parse.unquote(fname)
-                blend_path = SHARED_DOWNLOADS_DIR / fname
-                if not blend_path.exists():
-                    continue
-                print("處理: {0}".format(url))
-                trees = self.extract_nodes(blend_path)
-                try:
-                    blend_path.with_suffix('.json').unlink()
-                except: pass
-                if not trees:
-                    self.mark_done(url)
-                    continue
-                for tree in trees:
-                    tree_name = tree.get("tree_name", "Unnamed")
-                    summary = tree.get("summary", {})
-                    python_code = tree.get("python_code", "")
-                    print("  節點樹: {0} ({1} nodes)".format(tree_name, summary.get('node_count', 0)))
-                    desc = self.call_api(self.build_prompt(tree_name, summary))
-                    if desc:
-                        print("  描述: {0}...".format(desc[:50]))
-                        entry = {"instruction": desc, "output": python_code, "metadata": {"source_url": url, "tree_name": tree_name, "node_count": summary.get("node_count", 0)}}
-                        if self.save_entry(entry):
-                            self.processed_count += 1
-                            print("  已儲存! 總計: {0}".format(self.processed_count))
-                    else:
-                        print("  描述生成失敗")
-                    time.sleep(2)
-                self.mark_done(url)
         
         print()
         print("完成! 總共儲存: {0}".format(self.processed_count))
