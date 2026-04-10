@@ -480,7 +480,7 @@ print("EXTRACTED:" + str(found))
                     data = {"model": "gemini-2.0-flash", "messages": [{"role": "user", "content": prompt}], "temperature": 0.3}
                 elif self.api_name == "ollama":
                     url = "{0}/api/chat".format(OLLAMA_URL.rstrip("/"))
-                    data = {"model": "llama3.2", "messages": [{"role": "user", "content": prompt}], "stream": False}
+                    data = {"model": "llama3.2:1b", "messages": [{"role": "user", "content": prompt}], "stream": False}
                     headers = {"Content-Type": "application/json"}
                     resp = requests.post(url, json=data, headers=headers, timeout=60)
                     if resp.status_code == 200:
