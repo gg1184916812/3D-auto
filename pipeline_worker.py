@@ -9,8 +9,11 @@ URL_CACHE_FILE = Path("./url_cache.json")
 GROQ_KEY = os.environ.get("GROQ_KEY", "")
 MISTRAL_KEY = os.environ.get("MISTRAL_KEY", "")
 DEEPSEEK_KEY = os.environ.get("DEEPSEEK_KEY", "")
+GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
 
 HEADERS = {"User-Agent": "Mozilla/5.0"}
+if GITHUB_TOKEN:
+    HEADERS["Authorization"] = "token {0}".format(GITHUB_TOKEN)
 
 REPOS_WITH_GEONODES = [
     "BradyAJohnston/MolecularNodes",
