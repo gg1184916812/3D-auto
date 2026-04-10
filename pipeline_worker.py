@@ -4,6 +4,7 @@ from pathlib import Path
 
 BLENDER_EXE = r"C:\Program Files\Blender Foundation\Blender 4.5\blender.exe"
 OUTPUT_FILE = Path("./training_dataset.jsonl")
+URL_CACHE_FILE = Path("./url_cache.json")
 
 GROQ_KEY = os.environ.get("GROQ_KEY", "")
 MISTRAL_KEY = os.environ.get("MISTRAL_KEY", "")
@@ -11,43 +12,38 @@ DEEPSEEK_KEY = os.environ.get("DEEPSEEK_KEY", "")
 
 HEADERS = {"User-Agent": "Mozilla/5.0"}
 
-REPOS_TO_SCAN = [
+REPOS_WITH_GEONODES = [
     "BradyAJohnston/MolecularNodes",
     "node-dojo/dojo-recursive-bins",
-    "cgvirus/blender-geometry-nodes-collection",
     "al1brn/geonodes",
     "vevenom/pytorchgeonodes",
     "rbarbosa51/GeometryNodesByTutorials",
-    "Rideu/generative-blender",
-    "IRCSS/Blender-Geometry-Node-French-Houses",
-    "IRCSS/Trees-With-Geometry-Nodes-Blender",
-    "IRCSS/Procedural-Chinese-Landscape-Painting-Blender-3D",
-    "RanmanEmpire/RM_SubdivisionSurface",
-    "RanmanEmpire/RM_CurveMorph",
-    "fletchgraham/fletchnodes",
-    "Tams3d/T3D-GN-Presets",
 ]
 
-BLENDER_DEMO_URLS = [
-    "https://download.blender.org/demo/geometry-nodes/chocolate.blend",
-    "https://download.blender.org/demo/geometry-nodes/cubic-whirlpool_geometry-nodes-demo.blend",
-    "https://download.blender.org/demo/geometry-nodes/field_at_index.blend",
-    "https://download.blender.org/demo/geometry-nodes/flower_scattering.blend",
-    "https://download.blender.org/demo/geometry-nodes/food_geometry-nodes_demo.blend",
-    "https://download.blender.org/demo/geometry-nodes/instance_attribtues.blend",
-    "https://download.blender.org/demo/geometry-nodes/accumulate_field.blend",
-    "https://download.blender.org/demo/geometry-nodes/ball-in-grass_geometry-nodes-demo.blend",
-    "https://download.blender.org/demo/geometry-nodes/SDF_mixer_kitbukoros.blend",
-    "https://download.blender.org/demo/geometry-nodes/abstract_monkey_geometry-nodes_demo.blend",
-    "https://download.blender.org/demo/geometry-nodes/procedural_vine.blend",
-    "https://download.blender.org/demo/geometry-nodes/scatter_demo.blend",
-    "https://download.blender.org/demo/geometry-nodes/hair_strands.blend",
-    "https://download.blender.org/demo/geometry-nodes/ocean_waves.blend",
-    "https://download.blender.org/demo/geometry-nodes/city_generator.blend",
-    "https://download.blender.org/demo/geometry-nodes/terrain_gen.blend",
-    "https://download.blender.org/demo/test/splash.blend",
-    "https://download.blender.org/demo/test/test.blend",
+KNOWN_WORKING_URLS = [
+    "https://raw.githubusercontent.com/BradyAJohnston/MolecularNodes/HEAD/molecularnodes/assets/node_data_file.blend",
+    "https://raw.githubusercontent.com/BradyAJohnston/MolecularNodes/HEAD/molecularnodes/assets/template/startup.blend",
+    "https://raw.githubusercontent.com/node-dojo/dojo-recursive-bins/HEAD/Dojo%20Bin%20Generator_recursive%202%20step_v0.1.1.blend",
+    "https://raw.githubusercontent.com/node-dojo/dojo-recursive-bins/HEAD/Dojo%20Bin%20Generator_recursive%20red%20bins_v.0.1.1.blend",
+    "https://raw.githubusercontent.com/al1brn/geonodes/HEAD/generation/gen%20V5.blend",
+    "https://raw.githubusercontent.com/al1brn/geonodes/HEAD/generation/gen%20auto.blend",
+    "https://raw.githubusercontent.com/al1brn/geonodes/HEAD/generation/gendoc.blend",
+    "https://raw.githubusercontent.com/vevenom/pytorchgeonodes/HEAD/ShapeProgramsDataset/bed.blend",
+    "https://raw.githubusercontent.com/vevenom/pytorchgeonodes/HEAD/ShapeProgramsDataset/cabinet.blend",
+    "https://raw.githubusercontent.com/vevenom/pytorchgeonodes/HEAD/ShapeProgramsDataset/cabinet_div_boards_vis.blend",
+    "https://raw.githubusercontent.com/vevenom/pytorchgeonodes/HEAD/ShapeProgramsDataset/chair.blend",
+    "https://raw.githubusercontent.com/vevenom/pytorchgeonodes/HEAD/ShapeProgramsDataset/chair2.blend",
+    "https://raw.githubusercontent.com/vevenom/pytorchgeonodes/HEAD/ShapeProgramsDataset/chair_safe.blend",
+    "https://raw.githubusercontent.com/vevenom/pytorchgeonodes/HEAD/ShapeProgramsDataset/cube.blend",
+    "https://raw.githubusercontent.com/vevenom/pytorchgeonodes/HEAD/ShapeProgramsDataset/sofa.blend",
+    "https://raw.githubusercontent.com/vevenom/pytorchgeonodes/HEAD/ShapeProgramsDataset/table.blend",
+    "https://raw.githubusercontent.com/vevenom/pytorchgeonodes/HEAD/ShapeProgramsDataset/test.blend",
 ]
+
+CHAPTER_URLS = []
+for chap in range(1, 11):
+    for suffix in ["Final", "Start"]:
+        CHAPTER_URLS.append(f"https://raw.githubusercontent.com/rbarbosa51/GeometryNodesByTutorials/HEAD/Chapter{chap:02d}/Chapter{chap:02d}{suffix}.blend")
 
 def fetch_blend_urls_from_repo(repo):
     urls = []
@@ -65,16 +61,43 @@ def fetch_blend_urls_from_repo(repo):
         print(f"  獲取 {repo} 失敗: {e}")
     return urls
 
+def load_cached_urls():
+    if URL_CACHE_FILE.exists():
+        try:
+            with open(URL_CACHE_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except:
+            pass
+    return None
+
+def save_cached_urls(urls):
+    try:
+        with open(URL_CACHE_FILE, "w", encoding="utf-8") as f:
+            json.dump(urls, f)
+    except:
+        pass
+
 def fetch_all_urls():
-    all_urls = list(BLENDER_DEMO_URLS)
+    cached = load_cached_urls()
+    if cached:
+        print(f"使用快取 URL: {len(cached)} 個")
+        return cached
+    
+    all_urls = list(KNOWN_WORKING_URLS)
+    all_urls.extend(CHAPTER_URLS)
+    
     print("從 GitHub 倉庫搜索 blend 檔案...")
-    for repo in REPOS_TO_SCAN:
+    for repo in REPOS_WITH_GEONODES:
         urls = fetch_blend_urls_from_repo(repo)
         if urls:
             print(f"  {repo}: 找到 {len(urls)} 個 blend 檔")
             all_urls.extend(urls)
-        time.sleep(0.5)
-    return list(set(all_urls))
+        time.sleep(1)
+    
+    all_urls = list(set(all_urls))
+    save_cached_urls(all_urls)
+    print(f"總共快取: {len(all_urls)} 個 URL")
+    return all_urls
 
 class APIKeyManager:
     def __init__(self, api_keys):
@@ -108,7 +131,6 @@ class Pipeline:
         self.api_name = api_name
         self.done_file = Path("done_" + api_name + ".txt")
         self.log_file = Path("pipeline_" + api_name + "_log.txt")
-        self.lock_file = Path("pipeline_" + api_name + ".lock")
         self.temp_dir = Path("temp_" + api_name)
         self.temp_dir.mkdir(exist_ok=True)
         if api_name == "groq":
@@ -137,8 +159,7 @@ class Pipeline:
 
     def save_entry(self, entry):
         OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
-        max_retries = 10
-        for attempt in range(max_retries):
+        for attempt in range(10):
             try:
                 with open(OUTPUT_FILE, "a", encoding="utf-8") as f:
                     for _ in range(300):
@@ -151,10 +172,10 @@ class Pipeline:
                     msvcrt.locking(f.fileno(), msvcrt.LK_UNLCK, 0)
                 return True
             except Exception as e:
-                if attempt < max_retries - 1:
+                if attempt < 9:
                     time.sleep(0.5)
                 else:
-                    self.log(f"寫入失敗: {e}")
+                    self.log("寫入失敗: {0}".format(e))
         return False
 
     def download_file(self, url):
@@ -181,7 +202,7 @@ class Pipeline:
                     return None
                 return tmp_path
         except Exception as e:
-            self.log(f"下載失敗: {e}")
+            self.log("下載失敗: {0}".format(e))
             return None
 
     def extract_nodes(self, blend_path):
@@ -190,7 +211,11 @@ import bpy, json, sys, os
 output_json = r"{output_json}"
 blend_file = r"{blend_file}"
 results = []
-bpy.ops.wm.open_mainfile(filepath=blend_file)
+try:
+    bpy.ops.wm.open_mainfile(filepath=blend_file)
+except Exception as e:
+    print("OPEN_ERROR:" + str(e))
+    sys.exit(1)
 def tree_to_python(tree):
     lines = ["import bpy", "from bpy import data as bpy.data", "", "def create_node_tree():", "    tree = bpy.data.node_groups.new('" + tree.name.replace("'", "\\'") + "', 'GeometryNodeTree')"]
     for n in tree.nodes:
@@ -223,15 +248,17 @@ def summarize(tree):
     for n in tree.nodes:
         nt[n.type] = nt.get(n.type, 0) + 1
     return {{"node_count": len(tree.nodes), "link_count": len(tree.links), "node_types": nt, "has_animation": any(n.type == "INPUT_SCENE_TIME" for n in tree.nodes), "has_noise": any("NOISE" in n.type for n in tree.nodes), "has_instancing": any(n.type == "INSTANCE_ON_POINTS" for n in tree.nodes), "has_distribution": any(n.type == "DISTRIBUTE_POINTS_ON_FACES" for n in tree.nodes), "has_math": any(n.type == "MATH" for n in tree.nodes), "has_material": any(n.type == "SET_MATERIAL" for n in tree.nodes)}}
+found = 0
 for ng in bpy.data.node_groups:
     if ng.type != "GEOMETRY": continue
     if len(ng.nodes) < 3: continue
     try:
         results.append({{"tree_name": ng.name, "summary": summarize(ng), "python_code": tree_to_python(ng)}})
+        found += 1
     except: pass
 with open(output_json, "w", encoding="utf-8") as f:
     json.dump(results, f, ensure_ascii=False)
-print("EXTRACTED:{{0}}".format(len(results)))
+print("EXTRACTED:" + str(found))
 '''.format(output_json=str(blend_path.with_suffix('.json')), blend_file=str(blend_path))
         with open(self.temp_dir / "extract_nodes.py", "w", encoding="utf-8") as f:
             f.write(script)
@@ -241,12 +268,15 @@ print("EXTRACTED:{{0}}".format(len(results)))
             for line in result.stdout.splitlines():
                 if line.startswith("EXTRACTED:"):
                     count = int(line.split(":")[1])
-                    self.log(f"  Blender 解析完成，找到 {count} 個節點樹")
+                    self.log("  Blender 解析完成，找到 {0} 個節點樹".format(count))
                     json_path = blend_path.with_suffix('.json')
                     if count > 0 and json_path.exists():
                         with open(json_path, "r", encoding="utf-8") as f:
                             trees = json.load(f)
                         return trees
+                    return []
+                if line.startswith("OPEN_ERROR:"):
+                    self.log("  Blender 打開檔案失敗: {0}".format(line.split(":", 1)[1]))
                     return []
             self.log("  Blender 未找到幾何節點樹")
             return []
@@ -305,7 +335,7 @@ print("EXTRACTED:{{0}}".format(len(results)))
                 else:
                     url = "https://api.deepseek.com/chat/completions"
                     data = {"model": "deepseek-chat", "messages": [{"role": "user", "content": prompt}], "temperature": 0.3}
-                headers = {"Authorization": f"Bearer {{api_key}}", "Content-Type": "application/json"}
+                headers = {"Authorization": "Bearer {0}".format(api_key), "Content-Type": "application/json"}
                 resp = requests.post(url, json=data, headers=headers, timeout=30)
                 if resp.status_code == 200:
                     self.manager.mark_success()
@@ -313,33 +343,32 @@ print("EXTRACTED:{{0}}".format(len(results)))
                 elif resp.status_code == 429:
                     self.manager.mark_rate_limit(60)
                     wait_time = base_delay * (2 ** attempt)
-                    self.log(f"  API 限流，等待 {{wait_time}} 秒...")
+                    self.log("  API 限流，等待 {0} 秒...".format(wait_time))
                     time.sleep(wait_time)
                 else:
-                    self.log(f"  API 錯誤 {{resp.status_code}}: {{resp.text[:100]}}")
+                    self.log("  API 錯誤 {0}: {1}".format(resp.status_code, resp.text[:100]))
                     return None
             except Exception as e:
-                self.log(f"  API 錯誤: {{e}}")
+                self.log("  API 錯誤: {0}".format(e))
                 if attempt < retries - 1:
                     time.sleep(base_delay * (2 ** attempt))
         return None
 
     def run(self):
         print("=" * 60)
-        print(f"Blender 訓練資料流水線 - {self.api_name.upper()}")
+        print("Blender 訓練資料流水線 - {0}".format(self.api_name.upper()))
         print("=" * 60)
-        print(f"Blender 路徑: {BLENDER_EXE}")
+        print("Blender 路徑: {0}".format(BLENDER_EXE))
         print()
         done_urls = self.load_done()
-        print(f"已處理過: {len(done_urls)} 個 URL")
+        print("已處理過: {0} 個 URL".format(len(done_urls)))
         print("動態獲取 URL 中...")
         self.all_urls = fetch_all_urls()
-        print(f"總共發現: {len(self.all_urls)} 個 URL")
         pending_urls = [u for u in self.all_urls if u not in done_urls]
-        print(f"本次待處理: {len(pending_urls)} 個 URL")
+        print("本次待處理: {0} 個 URL".format(len(pending_urls)))
         print()
         for url in pending_urls:
-            print(f"處理: {url}")
+            print("處理: {0}".format(url))
             blend_path = self.download_file(url)
             if not blend_path:
                 self.mark_done(url)
@@ -356,20 +385,20 @@ print("EXTRACTED:{{0}}".format(len(results)))
                 tree_name = tree.get("tree_name", "Unnamed")
                 summary = tree.get("summary", {})
                 python_code = tree.get("python_code", "")
-                print(f"  節點樹: {tree_name} ({summary.get('node_count', 0)} nodes)")
+                print("  節點樹: {0} ({1} nodes)".format(tree_name, summary.get('node_count', 0)))
                 desc = self.call_api(self.build_prompt(tree_name, summary))
                 if desc:
-                    print(f"  描述: {desc[:50]}...")
+                    print("  描述: {0}...".format(desc[:50]))
                     entry = {"instruction": desc, "output": python_code, "metadata": {"source_url": url, "tree_name": tree_name, "node_count": summary.get("node_count", 0)}}
                     if self.save_entry(entry):
                         self.processed_count += 1
-                        print(f"  已儲存! 總計: {self.processed_count}")
+                        print("  已儲存! 總計: {0}".format(self.processed_count))
                 else:
                     print("  描述生成失敗")
                 time.sleep(2)
             self.mark_done(url)
         print()
-        print(f"完成! 總共儲存: {self.processed_count}")
+        print("完成! 總共儲存: {0}".format(self.processed_count))
 
 if __name__ == "__main__":
     api_name = sys.argv[1] if len(sys.argv) > 1 else "groq"
