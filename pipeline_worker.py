@@ -84,41 +84,25 @@ def fetch_blend_urls_from_repo(repo):
                 if path.endswith('.blend'):
                     safe_path = urllib.parse.quote(path, safe='/')
                     urls.append(f"https://raw.githubusercontent.com/{repo}/HEAD/{safe_path}")
+    except urllib.error.HTTPError as e:
+        if e.code == 403:
+            print("  API 限流: {0}".format(repo))
+        else:
+            print("  HTTP 錯誤 {1}: {0}".format(repo, e.code))
     except Exception as e:
-        print(f"  獲取 {repo} 失敗: {e}")
+        print("  獲取失敗 {0}: {1}".format(repo, e))
     return urls
-
-def load_cached_urls():
-    if URL_CACHE_FILE.exists():
-        try:
-            with open(URL_CACHE_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except:
-            pass
-    return None
-
-def save_cached_urls(urls):
-    try:
-        with open(URL_CACHE_FILE, "w", encoding="utf-8") as f:
-            json.dump(urls, f)
-    except:
-        pass
-
-def get_shared_downloaded():
-    if SHARED_DOWNLOAD_LOG.exists():
-        with open(SHARED_DOWNLOAD_LOG, "r", encoding="utf-8") as f:
-            return set(line.strip() for line in f if line.strip())
-    return set()
-
-def mark_shared_downloaded(url):
-    with open(SHARED_DOWNLOAD_LOG, "a", encoding="utf-8") as f:
-        f.write(url + "\n")
 
 def fetch_all_urls():
     cached = load_cached_urls()
     if cached:
-        print(f"使用快取 URL: {len(cached)} 個")
+        print("使用快取 URL: {0} 個".format(len(cached)))
         return cached
+    
+    if GITHUB_TOKEN:
+        print("GitHub Token: 已設定 (可用於提高 API 限流)")
+    else:
+        print("GitHub Token: 未設定 (API 限流可能較低)")
     
     all_urls = list(KNOWN_WORKING_URLS)
     all_urls.extend(CHAPTER_URLS)
@@ -128,13 +112,15 @@ def fetch_all_urls():
     for repo in REPOS_WITH_GEONODES:
         urls = fetch_blend_urls_from_repo(repo)
         if urls:
-            print(f"  {repo}: 找到 {len(urls)} 個 blend 檔")
+            print("  {0}: 找到 {1} 個 blend 檔".format(repo, len(urls)))
             all_urls.extend(urls)
+        else:
+            print("  {0}: 獲取失敗 (可能 API 限流)".format(repo))
         time.sleep(1)
     
     all_urls = list(set(all_urls))
     save_cached_urls(all_urls)
-    print(f"總共快取: {len(all_urls)} 個 URL")
+    print("總共快取: {0} 個 URL".format(len(all_urls)))
     return all_urls
 
 class APIKeyManager:
