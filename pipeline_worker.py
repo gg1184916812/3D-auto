@@ -10,7 +10,6 @@ SHARED_DOWNLOAD_LOG = Path("./shared_downloads.txt")
 
 GROQ_KEY = os.environ.get("GROQ_KEY", "")
 MISTRAL_KEY = os.environ.get("MISTRAL_KEY", "")
-DEEPSEEK_KEY = os.environ.get("DEEPSEEK_KEY", "")
 GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
 
 HEADERS = {"User-Agent": "Mozilla/5.0"}
@@ -187,8 +186,6 @@ class Pipeline:
             self.manager = APIKeyManager([k for k in [GROQ_KEY] if k])
         elif api_name == "mistral":
             self.manager = APIKeyManager([k for k in [MISTRAL_KEY] if k])
-        else:
-            self.manager = APIKeyManager([k for k in [DEEPSEEK_KEY] if k])
         self.all_urls = []
         self.processed_count = 0
 
@@ -427,9 +424,6 @@ print("EXTRACTED:" + str(found))
                 elif self.api_name == "mistral":
                     url = "https://api.mistral.ai/v1/chat/completions"
                     data = {"model": "mistral-small-latest", "messages": [{"role": "user", "content": prompt}], "temperature": 0.3}
-                else:
-                    url = "https://api.deepseek.com/chat/completions"
-                    data = {"model": "deepseek-chat", "messages": [{"role": "user", "content": prompt}], "temperature": 0.3}
                 headers = {"Authorization": "Bearer {0}".format(api_key), "Content-Type": "application/json"}
                 resp = requests.post(url, json=data, headers=headers, timeout=30)
                 if resp.status_code == 200:
