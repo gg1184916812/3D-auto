@@ -293,12 +293,12 @@ print("EXTRACTED:{{0}}".format(len(results)))
                     return None
                 if self.api_name == "groq":
                     url = "https://api.groq.com/openai/v1/chat/completions"
-                    data = {"model": "llama-3.1-8b-instant", "messages": [{"role": "user", "content": prompt}], "temperature": 0.3}
+                    data = {"model": "llama3-8b-8192", "messages": [{"role": "user", "content": prompt}], "temperature": 0.3}
                 elif self.api_name == "mistral":
                     url = "https://api.mistral.ai/v1/chat/completions"
                     data = {"model": "mistral-small-latest", "messages": [{"role": "user", "content": prompt}], "temperature": 0.3}
                 else:
-                    url = "https://api.deepseek.com/v1/chat/completions"
+                    url = "https://api.deepseek.com/chat/completions"
                     data = {"model": "deepseek-chat", "messages": [{"role": "user", "content": prompt}], "temperature": 0.3}
                 headers = {"Authorization": f"Bearer {{api_key}}", "Content-Type": "application/json"}
                 resp = requests.post(url, json=data, headers=headers, timeout=30)
