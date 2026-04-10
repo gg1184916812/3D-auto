@@ -292,12 +292,18 @@ def tree_to_python(tree):
                 if inp.is_multi_input:
                     for sock in inp.interface.items_tree:
                         if hasattr(sock, 'default_value'):
-                            try: lines.append("    " + node_name + ".inputs[" + str(i) + "].default_value = " + str(sock.default_value))
-                            except: pass
+                            try:
+                                lines.append("    " + node_name + ".inputs[" + str(i) + "].default_value = " + str(sock.default_value))
+                            except:
+                                pass
                 elif hasattr(inp, 'default_value') and str(inp.default_value) != "<bpy_prop Array [0.0]>":
-                    try: val = inp.default_value if not hasattr(inp.default_value, '__iter__') else list(inp.default_value)
-                            lines.append("    " + node_name + ".inputs[" + str(i) + "].default_value = " + str(val))
-                    except: pass
+                    try:
+                        val = inp.default_value
+                        if hasattr(val, '__iter__') and not isinstance(val, str):
+                            val = list(val)
+                        lines.append("    " + node_name + ".inputs[" + str(i) + "].default_value = " + str(val))
+                    except:
+                        pass
     for link in tree.links:
         fv = link.from_socket.node.name if link.from_socket.node.type != "REROUTE" else None
         tv = link.to_socket.node.name if link.to_socket.node.type != "REROUTE" else None
