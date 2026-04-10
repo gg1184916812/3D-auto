@@ -415,7 +415,7 @@ print("EXTRACTED:" + str(found))
                     return None
                 if self.api_name == "groq":
                     url = "https://api.groq.com/openai/v1/chat/completions"
-                    data = {"model": "llama3-8b-8192", "messages": [{"role": "user", "content": prompt}], "temperature": 0.3}
+                    data = {"model": "llama-3.3-8b-instant", "messages": [{"role": "user", "content": prompt}], "temperature": 0.3}
                 elif self.api_name == "mistral":
                     url = "https://api.mistral.ai/v1/chat/completions"
                     data = {"model": "mistral-small-latest", "messages": [{"role": "user", "content": prompt}], "temperature": 0.3}
