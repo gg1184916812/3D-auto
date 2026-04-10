@@ -272,76 +272,116 @@ class Pipeline:
             return None
 
     def extract_nodes(self, blend_path):
-        script = '''
+        script = r'''
 import bpy, json, sys, os
+
 output_json = r"{output_json}"
 blend_file = r"{blend_file}"
 results = []
+
 try:
     bpy.ops.wm.open_mainfile(filepath=blend_file)
 except Exception as e:
     print("OPEN_ERROR:" + str(e))
     sys.exit(1)
 
-print("FILE_LOADED:" + blend_file)
-print("NODE_GROUPS_COUNT:" + str(len(bpy.data.node_groups)))
+def safe_name(name):
+    import re
+    name = re.sub(r'[^a-zA-Z0-9_]', '_', name)
+    if name[0].isdigit():
+        name = 'n' + name
+    return name[:50]
 
-for ng in bpy.data.node_groups:
-    print("NG_TYPE:" + ng.type + ":" + ng.name)
-
-def tree_to_python(tree):
-    lines = ["import bpy", "from bpy import data as bpy.data", "", "def create_node_tree():", "    tree = bpy.data.node_groups.new('" + tree.name.replace("'", "\\'") + "', 'GeometryNodeTree')"]
-    for n in tree.nodes:
-        if n.type == "REROUTE": continue
-        node_name = "node_" + n.name.replace(" ", "_").replace("-", "_")
-        lines.append("    " + node_name + " = tree.nodes.new('" + n.type + "')")
-        lines.append("    " + node_name + ".location = (" + str(n.location.x) + ", " + str(n.location.y) + ")")
-        if hasattr(n, 'inputs'):
-            for i, inp in enumerate(n.inputs):
-                if inp.is_multi_input:
-                    for sock in inp.interface.items_tree:
-                        if hasattr(sock, 'default_value'):
-                            try:
-                                lines.append("    " + node_name + ".inputs[" + str(i) + "].default_value = " + str(sock.default_value))
-                            except:
-                                pass
-                elif hasattr(inp, 'default_value') and str(inp.default_value) != "<bpy_prop Array [0.0]>":
-                    try:
-                        val = inp.default_value
-                        if hasattr(val, '__iter__') and not isinstance(val, str):
-                            val = list(val)
-                        lines.append("    " + node_name + ".inputs[" + str(i) + "].default_value = " + str(val))
-                    except:
-                        pass
-    for link in tree.links:
-        fv = link.from_socket.node.name if link.from_socket.node.type != "REROUTE" else None
-        tv = link.to_socket.node.name if link.to_socket.node.type != "REROUTE" else None
-        if fv and tv:
-            fn = "node_" + fv.replace(" ", "_").replace("-", "_")
-            tn = "node_" + tv.replace(" ", "_").replace("-", "_")
-            lines.append("    links.new(" + fn + ".outputs[\"" + link.from_socket.name + "\"], " + tn + ".inputs[\"" + link.to_socket.name + "\"])")
-    lines += ["", "    return tree", "", "create_node_tree()"]
-    return "\\n".join(lines)
-
-def summarize(tree):
-    nt = {{}}
-    for n in tree.nodes:
-        nt[n.type] = nt.get(n.type, 0) + 1
-    return {{"node_count": len(tree.nodes), "link_count": len(tree.links), "node_types": nt, "has_animation": any(n.type == "INPUT_SCENE_TIME" for n in tree.nodes), "has_noise": any("NOISE" in n.type for n in tree.nodes), "has_instancing": any(n.type == "INSTANCE_ON_POINTS" for n in tree.nodes), "has_distribution": any(n.type == "DISTRIBUTE_POINTS_ON_FACES" for n in tree.nodes), "has_math": any(n.type == "MATH" for n in tree.nodes), "has_material": any(n.type == "SET_MATERIAL" for n in tree.nodes)}}
-
-found = 0
-for ng in bpy.data.node_groups:
-    if ng.type != "GEOMETRY": continue
-    if len(ng.nodes) < 3: continue
+def value_to_str(val):
+    if val is None:
+        return "None"
+    if isinstance(val, bool):
+        return "True" if val else "False"
+    if isinstance(val, (int, float)):
+        return str(val)
+    if isinstance(val, str):
+        return repr(val)
+    if hasattr(val, '__iter__'):
+        try:
+            if isinstance(val, dict):
+                return repr(val)
+            return "[" + ", ".join(value_to_str(x) for x in val) + "]"
+        except:
+            pass
     try:
-        results.append({{"tree_name": ng.name, "summary": summarize(ng), "python_code": tree_to_python(ng)}})
-        found += 1
+        return repr(val)
+    except:
+        return "None"
+
+for ng in bpy.data.node_groups:
+    if ng.type != "GEOMETRY":
+        continue
+    if len(ng.nodes) < 3:
+        continue
+    
+    try:
+        tree_code = ['import bpy', 'from bpy import data as bpy_data', '', 'def create_node_tree():', '    tree = bpy_data.node_groups.new("' + ng.name.replace('"', '\\"') + '", "GeometryNodeTree")']
+        
+        node_map = {}
+        for n in ng.nodes:
+            if n.type == "REROUTE":
+                continue
+            safe_n = safe_name(n.name)
+            node_map[n.name] = safe_n
+            tree_code.append('    ' + safe_n + ' = tree.nodes.new("' + n.type + '")')
+            tree_code.append('    ' + safe_n + '.location = (' + str(n.location.x) + ', ' + str(n.location.y) + ')')
+            
+            for i, inp in enumerate(n.inputs):
+                try:
+                    if inp.is_linked:
+                        continue
+                    dv = inp.default_value
+                    tree_code.append('    ' + safe_n + '.inputs[' + str(i) + '].default_value = ' + value_to_str(dv))
+                except:
+                    pass
+        
+        for link in ng.links:
+            try:
+                if link.from_socket.node.type == "REROUTE" or link.to_socket.node.type == "REROUTE":
+                    continue
+                fn = node_map.get(link.from_socket.node.name)
+                tn = node_map.get(link.to_socket.node.name)
+                if fn and tn:
+                    tree_code.append('    tree.links.new(' + fn + '.outputs["' + link.from_socket.name + '"], ' + tn + '.inputs["' + link.to_socket.name + '"])')
+            except:
+                pass
+        
+        tree_code.append('    return tree')
+        tree_code.append('')
+        tree_code.append('create_node_tree()')
+        
+        python_code = '\n'.join(tree_code)
+        
+        nt = {{}}
+        for n in ng.nodes:
+            nt[n.type] = nt.get(n.type, 0) + 1
+        
+        summary = {{
+            "node_count": len(ng.nodes),
+            "link_count": len(ng.links),
+            "node_types": nt,
+            "has_animation": any(n.type == "INPUT_SCENE_TIME" for n in ng.nodes),
+            "has_noise": any("NOISE" in n.type for n in ng.nodes),
+            "has_instancing": any(n.type == "INSTANCE_ON_POINTS" for n in ng.nodes),
+            "has_distribution": any(n.type == "DISTRIBUTE_POINTS_ON_FACES" for n in ng.nodes),
+            "has_math": any(n.type == "MATH" for n in ng.nodes),
+            "has_material": any(n.type == "SET_MATERIAL" for n in ng.nodes)
+        }}
+        
+        results.append({{"tree_name": ng.name, "summary": summary, "python_code": python_code}})
         print("FOUND_GN:" + ng.name)
-    except: pass
+    except Exception as e:
+        print("ERROR:" + str(e))
 
 with open(output_json, "w", encoding="utf-8") as f:
     json.dump(results, f, ensure_ascii=False)
-print("EXTRACTED:" + str(found))
+print("EXTRACTED:" + str(len(results)))
+'''.format(output_json=str(blend_path.with_suffix('.json')), blend_file=str(blend_path))
 '''.format(output_json=str(blend_path.with_suffix('.json')), blend_file=str(blend_path))
         
         with open(self.temp_dir / "extract_nodes.py", "w", encoding="utf-8") as f:
