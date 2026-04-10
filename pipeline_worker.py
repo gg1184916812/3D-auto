@@ -237,6 +237,7 @@ class Pipeline:
         
         shared_path = SHARED_DOWNLOADS_DIR / fname
         if shared_path.exists() and shared_path.stat().st_size > 1000:
+            print("  [已存在，跳過下載]")
             return shared_path
         
         tmp_path = self.temp_dir / fname
@@ -248,11 +249,16 @@ class Pipeline:
                 downloaded = 0
                 with open(tmp_path, "wb") as out:
                     while True:
-                        chunk = resp.read(8192)
+                        chunk = resp.read(65536)
                         if not chunk:
                             break
                         out.write(chunk)
                         downloaded += len(chunk)
+                        if total_size > 0:
+                            pct = int(100 * downloaded / total_size)
+                            bar = "#" * (pct // 5) + "-" * (20 - pct // 5)
+                            print("\r  下載中 [{0}] {1}% ({2}/{3} KB)".format(bar, pct, downloaded // 1024, total_size // 1024), end="", flush=True)
+                print()
                 if downloaded < 1000:
                     tmp_path.unlink()
                     return None
@@ -260,6 +266,7 @@ class Pipeline:
                 mark_shared_downloaded(url)
                 return shared_path
         except Exception as e:
+            print()
             self.log("下載失敗: {0}".format(e))
             return None
 
