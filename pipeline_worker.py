@@ -473,7 +473,7 @@ print("EXTRACTED:" + str(found))
                     data = {"model": "mistral-small-latest", "messages": [{"role": "user", "content": prompt}], "temperature": 0.3}
                 elif self.api_name == "gemini":
                     url = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
-                    data = {"model": "gemini-2.0-flash-exp", "messages": [{"role": "user", "content": prompt}], "temperature": 0.3}
+                    data = {"model": "gemini-2.0-flash", "messages": [{"role": "user", "content": prompt}], "temperature": 0.3}
                 headers = {"Authorization": "Bearer {0}".format(api_key), "Content-Type": "application/json"}
                 resp = requests.post(url, json=data, headers=headers, timeout=30)
                 if resp.status_code == 200:
