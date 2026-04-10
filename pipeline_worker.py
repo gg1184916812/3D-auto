@@ -145,6 +145,10 @@ def get_shared_downloaded():
             return set(line.strip() for line in f if line.strip())
     return set()
 
+def mark_shared_downloaded(url):
+    with open(SHARED_DOWNLOAD_LOG, "a", encoding="utf-8") as f:
+        f.write(url + "\n")
+
 class APIKeyManager:
     def __init__(self, api_keys):
         self.api_keys = api_keys
