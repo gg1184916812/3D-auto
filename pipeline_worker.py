@@ -186,31 +186,36 @@ class Pipeline:
 
     def extract_nodes(self, blend_path):
         script = '''
-import bpy, json, sys
+import bpy, json, sys, os
 output_json = r"{output_json}"
+blend_file = r"{blend_file}"
 results = []
+bpy.ops.wm.open_mainfile(filepath=blend_file)
 def tree_to_python(tree):
-    lines = ["import bpy", "from bpy import data as bpy.data", "", "def create_node_tree():", "    tree = bpy.data.node_groups.new('" + tree.name + "', 'GeometryNodeTree')"]
+    lines = ["import bpy", "from bpy import data as bpy.data", "", "def create_node_tree():", "    tree = bpy.data.node_groups.new('" + tree.name.replace("'", "\\'") + "', 'GeometryNodeTree')"]
     for n in tree.nodes:
         if n.type == "REROUTE": continue
-        lines.append("    " + n.name + " = tree.nodes.new('" + n.type + "')")
-        lines.append("    " + n.name + ".location = (" + str(n.location.x) + ", " + str(n.location.y) + ")")
+        node_name = "node_" + n.name.replace(" ", "_").replace("-", "_")
+        lines.append("    " + node_name + " = tree.nodes.new('" + n.type + "')")
+        lines.append("    " + node_name + ".location = (" + str(n.location.x) + ", " + str(n.location.y) + ")")
         if hasattr(n, 'inputs'):
             for i, inp in enumerate(n.inputs):
                 if inp.is_multi_input:
                     for sock in inp.interface.items_tree:
                         if hasattr(sock, 'default_value'):
-                            try: lines.append("    " + n.name + ".inputs[" + str(i) + "].default_value = " + str(sock.default_value))
+                            try: lines.append("    " + node_name + ".inputs[" + str(i) + "].default_value = " + str(sock.default_value))
                             except: pass
                 elif hasattr(inp, 'default_value') and str(inp.default_value) != "<bpy_prop Array [0.0]>":
                     try: val = inp.default_value if not hasattr(inp.default_value, '__iter__') else list(inp.default_value)
-                            lines.append("    " + n.name + ".inputs[" + str(i) + "].default_value = " + str(val))
+                            lines.append("    " + node_name + ".inputs[" + str(i) + "].default_value = " + str(val))
                     except: pass
     for link in tree.links:
         fv = link.from_socket.node.name if link.from_socket.node.type != "REROUTE" else None
         tv = link.to_socket.node.name if link.to_socket.node.type != "REROUTE" else None
         if fv and tv:
-            lines.append("    links.new(" + fv + ".outputs[\"" + link.from_socket.name + "\"], " + tv + ".inputs[\"" + link.to_socket.name + "\"])")
+            fn = "node_" + fv.replace(" ", "_").replace("-", "_")
+            tn = "node_" + tv.replace(" ", "_").replace("-", "_")
+            lines.append("    links.new(" + fn + ".outputs[\"" + link.from_socket.name + "\"], " + tn + ".inputs[\"" + link.to_socket.name + "\"])")
     lines += ["", "    return tree", "", "create_node_tree()"]
     return "\\n".join(lines)
 def summarize(tree):
@@ -227,11 +232,11 @@ for ng in bpy.data.node_groups:
 with open(output_json, "w", encoding="utf-8") as f:
     json.dump(results, f, ensure_ascii=False)
 print("EXTRACTED:{{0}}".format(len(results)))
-'''.format(output_json=str(blend_path.with_suffix('.json')))
+'''.format(output_json=str(blend_path.with_suffix('.json')), blend_file=str(blend_path))
         with open(self.temp_dir / "extract_nodes.py", "w", encoding="utf-8") as f:
             f.write(script)
         try:
-            cmd = [BLENDER_EXE, "--background", "--python", str(self.temp_dir / "extract_nodes.py"), "--", str(blend_path)]
+            cmd = [BLENDER_EXE, "--background", "--python", str(self.temp_dir / "extract_nodes.py"), "--"]
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=180, encoding="utf-8", errors="replace")
             for line in result.stdout.splitlines():
                 if line.startswith("EXTRACTED:"):
