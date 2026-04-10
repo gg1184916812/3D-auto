@@ -209,21 +209,22 @@ class Pipeline:
 
     def save_entry(self, entry):
         OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
-        for attempt in range(10):
+        line = json.dumps(entry, ensure_ascii=False) + "\n"
+        for attempt in range(20):
             try:
                 with open(OUTPUT_FILE, "a", encoding="utf-8") as f:
-                    for _ in range(300):
-                        try:
-                            msvcrt.locking(f.fileno(), msvcrt.LK_LOCK, 0)
-                            break
-                        except:
-                            time.sleep(0.1)
-                    f.write(json.dumps(entry, ensure_ascii=False) + "\n")
-                    msvcrt.locking(f.fileno(), msvcrt.LK_UNLCK, 0)
+                    f.write(line)
+                    f.flush()
+                    os.fsync(f.fileno())
                 return True
-            except Exception as e:
-                if attempt < 9:
+            except PermissionError:
+                if attempt < 19:
                     time.sleep(0.5)
+                else:
+                    self.log("寫入失敗: 檔案被鎖定")
+            except Exception as e:
+                if attempt < 19:
+                    time.sleep(0.3)
                 else:
                     self.log("寫入失敗: {0}".format(e))
         return False
