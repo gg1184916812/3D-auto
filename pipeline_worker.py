@@ -123,6 +123,12 @@ def fetch_all_urls():
     print("總共快取: {0} 個 URL".format(len(all_urls)))
     return all_urls
 
+def get_shared_downloaded():
+    if SHARED_DOWNLOAD_LOG.exists():
+        with open(SHARED_DOWNLOAD_LOG, "r", encoding="utf-8") as f:
+            return set(line.strip() for line in f if line.strip())
+    return set()
+
 class APIKeyManager:
     def __init__(self, api_keys):
         self.api_keys = api_keys
