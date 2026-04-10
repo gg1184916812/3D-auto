@@ -6,3 +6,11 @@ file:///C:/Users/Administrator/Downloads/candy_bounce_geometry-nodes_demo.blend
 file:///C:/Users/Administrator/Downloads/chocolate_donut.blend
 file:///C:/Users/Administrator/Downloads/click_tools-impact_fracture.blend
 file:///C:/Users/Administrator/Downloads/flower_scattering.blend
+file:///C:/Users/Administrator/Downloads/food_geometry-nodes_demo.blend
+file:///C:/Users/Administrator/Downloads/hexgrid_blender_geometry_nodes_demo.blend
+file:///C:/Users/Administrator/Downloads/jiggly_pudding.blend
+file:///C:/Users/Administrator/Downloads/ripple_dreams_geometry-nodes_demo.blend
+file:///C:/Users/Administrator/Downloads/tree_leaves_moss_geo-nodes-demo.blend
+https://download.blender.org/demo/geometry-nodes/accumulate_field.blend
+https://download.blender.org/demo/geometry-nodes/ball-in-grass_geometry-nodes_demo.blend
+https://download.blender.org/demo/geometry-nodes/blender-geometry-nodes_procedural-buildings.blend
