@@ -31,6 +31,24 @@ SPACE_UNIVERSE = [
     "https://raw.githubusercontent.com/Rideu/generative-blender/HEAD/Planets/Ground/groundsloping_mastering.blend",
 ]
 
+DEEPSEEK_URLS = [
+    "https://download.blender.org/demo/geometry-nodes/chocolate.blend",
+    "https://download.blender.org/demo/geometry-nodes/cubic-whirlpool_geometry-nodes-demo.blend",
+    "https://download.blender.org/demo/geometry-nodes/field_at_index.blend",
+    "https://download.blender.org/demo/geometry-nodes/flower_scattering.blend",
+    "https://download.blender.org/demo/geometry-nodes/food_geometry-nodes_demo.blend",
+    "https://download.blender.org/demo/geometry-nodes/instance_attribtues.blend",
+    "https://download.blender.org/demo/geometry-nodes/accumulate_field.blend",
+    "https://download.blender.org/demo/geometry-nodes/ball-in-grass_geometry-nodes_demo.blend",
+    "https://download.blender.org/demo/geometry-nodes/SDF_mixer_kitbukoros.blend",
+    "https://download.blender.org/demo/geometry-nodes/abstract_monkey_geometry-nodes_demo.blend",
+    "https://raw.githubusercontent.com/BradyAJohnston/MolecularNodes/HEAD/molecularnodes/assets/node_data_file.blend",
+    "https://raw.githubusercontent.com/node-dojo/dojo-recursive-bins/HEAD/Dojo%20Bin%20Generator_recursive%202%20step_v0.1.1.blend",
+    "https://raw.githubusercontent.com/BlenderDev/blender-geometry-nodes/HEAD/examples/sphere_packing.blend",
+    "https://raw.githubusercontent.com/BlenderDev/blender-geometry-nodes/HEAD/examples/instancing.blend",
+    "https://raw.githubusercontent.com/BlenderDev/blender-geometry-nodes/HEAD/examples/noise_displacement.blend",
+]
+
 class APIKeyManager:
     def __init__(self, api_keys):
         self.api_keys = api_keys
@@ -73,7 +91,7 @@ class Pipeline:
             self.urls = SPACE_UNIVERSE
         else:
             self.manager = APIKeyManager(DEEPSEEK_KEYS)
-            self.urls = []
+            self.urls = DEEPSEEK_URLS
         self.processed_count = 0
     
     def log(self, msg):
