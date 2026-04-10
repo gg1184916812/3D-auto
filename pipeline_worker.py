@@ -26,6 +26,19 @@ REPOS_WITH_GEONODES = [
     "rbarbosa51/GeometryNodesByTutorials",
     "cgvirus/blender-geometry-nodes-collection",
     "Rideu/generative-blender",
+    "IRCSS/Blender-Geometry-Node-French-Houses",
+    "IRCSS/Trees-With-Geometry-Nodes-Blender",
+    "RanmanEmpire/RM_SubdivisionSurface",
+    "RanmanEmpire/RM_CurveMorph",
+    "fletchgraham/fletchnodes",
+    "Tams3d/T3D-GN-Presets",
+    "MACHIN3tools/MACHIN3",
+    "simo-esi/Blender-Geometry-Nodes-Collection",
+    "sobotka/Blender-Game-Engine",
+    "geo-data/blender-geodata",
+    "artfunkel/blender-geodesic",
+    "CFDXF/BlenderCityCons",
+    "BD3D/Blender-ADDON",
 ]
 
 KNOWN_WORKING_URLS = [
@@ -36,10 +49,13 @@ KNOWN_WORKING_URLS = [
     "https://raw.githubusercontent.com/node-dojo/dojo-recursive-bins/HEAD/Dojo%20Bin%20Generator_recursive%20red%20bins_v.0.1.1.blend",
     "https://raw.githubusercontent.com/al1brn/geonodes/HEAD/generation/gen%20V5.blend",
     "https://raw.githubusercontent.com/al1brn/geonodes/HEAD/generation/gen%20auto.blend",
+    "https://raw.githubusercontent.com/al1brn/geonodes/HEAD/generation/gendoc.blend",
     "https://raw.githubusercontent.com/vevenom/pytorchgeonodes/HEAD/ShapeProgramsDataset/bed.blend",
     "https://raw.githubusercontent.com/vevenom/pytorchgeonodes/HEAD/ShapeProgramsDataset/cabinet.blend",
+    "https://raw.githubusercontent.com/vevenom/pytorchgeonodes/HEAD/ShapeProgramsDataset/cabinet_div_boards_vis.blend",
     "https://raw.githubusercontent.com/vevenom/pytorchgeonodes/HEAD/ShapeProgramsDataset/chair.blend",
     "https://raw.githubusercontent.com/vevenom/pytorchgeonodes/HEAD/ShapeProgramsDataset/chair2.blend",
+    "https://raw.githubusercontent.com/vevenom/pytorchgeonodes/HEAD/ShapeProgramsDataset/chair_safe.blend",
     "https://raw.githubusercontent.com/vevenom/pytorchgeonodes/HEAD/ShapeProgramsDataset/sofa.blend",
     "https://raw.githubusercontent.com/vevenom/pytorchgeonodes/HEAD/ShapeProgramsDataset/table.blend",
     "https://raw.githubusercontent.com/vevenom/pytorchgeonodes/HEAD/ShapeProgramsDataset/cube.blend",
@@ -47,7 +63,7 @@ KNOWN_WORKING_URLS = [
 ]
 
 CHAPTER_URLS = []
-for chap in range(1, 11):
+for chap in range(1, 41):
     for suffix in ["Final", "Start"]:
         CHAPTER_URLS.append(f"https://raw.githubusercontent.com/rbarbosa51/GeometryNodesByTutorials/HEAD/Chapter{chap:02d}/Chapter{chap:02d}{suffix}.blend")
 
@@ -69,6 +85,8 @@ BLENDER_DEMO_URLS = [
     "https://download.blender.org/demo/geometry-nodes/ocean_waves.blend",
     "https://download.blender.org/demo/geometry-nodes/city_generator.blend",
     "https://download.blender.org/demo/geometry-nodes/terrain_gen.blend",
+    "https://download.blender.org/demo/geometry-nodes/procedural_vine.blend",
+    "https://download.blender.org/demo/geometry-nodes/scatter_demo.blend",
 ]
 
 def fetch_blend_urls_from_repo(repo):
