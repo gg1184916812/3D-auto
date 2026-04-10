@@ -185,32 +185,32 @@ class Pipeline:
             return None
 
     def extract_nodes(self, blend_path):
-        script = f'''
+        script = '''
 import bpy, json, sys
-bpy.ops.preferences.addon_enable(module="geometry_nodes")
-output_json = r"{blend_path.with_suffix('.json')}"
+output_json = r"{output_json}"
 results = []
 def tree_to_python(tree):
-    lines = ["import bpy", "from bpy import data as bpy.data", "", "def create_node_tree():", f"    tree = bpy.data.node_groups.new('{tree.name}', 'GeometryNodeTree')"]
+    lines = ["import bpy", "from bpy import data as bpy.data", "", "def create_node_tree():", "    tree = bpy.data.node_groups.new('" + tree.name + "', 'GeometryNodeTree')"]
     for n in tree.nodes:
         if n.type == "REROUTE": continue
-        lines.append(f"    {n.name} = tree.nodes.new('{n.type}')")
-        lines.append(f"    {n.name}.location = ({n.location.x}, {n.location.y})")
+        lines.append("    " + n.name + " = tree.nodes.new('" + n.type + "')")
+        lines.append("    " + n.name + ".location = (" + str(n.location.x) + ", " + str(n.location.y) + ")")
         if hasattr(n, 'inputs'):
             for i, inp in enumerate(n.inputs):
                 if inp.is_multi_input:
                     for sock in inp.interface.items_tree:
                         if hasattr(sock, 'default_value'):
-                            try: lines.append(f"    {n.name}.inputs[{i}].default_value = {sock.default_value}")
+                            try: lines.append("    " + n.name + ".inputs[" + str(i) + "].default_value = " + str(sock.default_value))
                             except: pass
                 elif hasattr(inp, 'default_value') and str(inp.default_value) != "<bpy_prop Array [0.0]>":
-                    try: lines.append(f"    {n.name}.inputs[{i}].default_value = {inp.default_value if not hasattr(inp.default_value, '__iter__') else list(inp.default_value)}")
+                    try: val = inp.default_value if not hasattr(inp.default_value, '__iter__') else list(inp.default_value)
+                            lines.append("    " + n.name + ".inputs[" + str(i) + "].default_value = " + str(val))
                     except: pass
     for link in tree.links:
         fv = link.from_socket.node.name if link.from_socket.node.type != "REROUTE" else None
         tv = link.to_socket.node.name if link.to_socket.node.type != "REROUTE" else None
         if fv and tv:
-            lines.append("    links.new({0}.outputs[\"{1}\"], {2}.inputs[\"{3}\"])".format(fv, link.from_socket.name, tv, link.to_socket.name))
+            lines.append("    links.new(" + fv + ".outputs[\"" + link.from_socket.name + "\"], " + tv + ".inputs[\"" + link.to_socket.name + "\"])")
     lines += ["", "    return tree", "", "create_node_tree()"]
     return "\\n".join(lines)
 def summarize(tree):
@@ -227,7 +227,7 @@ for ng in bpy.data.node_groups:
 with open(output_json, "w", encoding="utf-8") as f:
     json.dump(results, f, ensure_ascii=False)
 print("EXTRACTED:{{0}}".format(len(results)))
-'''
+'''.format(output_json=str(blend_path.with_suffix('.json')))
         with open(self.temp_dir / "extract_nodes.py", "w", encoding="utf-8") as f:
             f.write(script)
         try:
@@ -249,7 +249,7 @@ print("EXTRACTED:{{0}}".format(len(results)))
             self.log("  Blender 執行逾時 (180秒)")
             return []
         except Exception as e:
-            self.log(f"  Blender 錯誤: {{e}}")
+            self.log("  Blender 錯誤: {0}".format(e))
             return []
         finally:
             try:
