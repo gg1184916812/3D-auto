@@ -10,6 +10,7 @@ SHARED_DOWNLOAD_LOG = Path("./shared_downloads.txt")
 
 GROQ_KEY = os.environ.get("GROQ_KEY", "")
 MISTRAL_KEY = os.environ.get("MISTRAL_KEY", "")
+GEMINI_KEY = os.environ.get("GEMINI_KEY", "")
 GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
 
 HEADERS = {"User-Agent": "Mozilla/5.0"}
@@ -204,6 +205,8 @@ class Pipeline:
             self.manager = APIKeyManager([k for k in [GROQ_KEY] if k])
         elif api_name == "mistral":
             self.manager = APIKeyManager([k for k in [MISTRAL_KEY] if k])
+        elif api_name == "gemini":
+            self.manager = APIKeyManager([k for k in [GEMINI_KEY] if k])
         self.all_urls = []
         self.processed_count = 0
 
@@ -468,6 +471,9 @@ print("EXTRACTED:" + str(found))
                 elif self.api_name == "mistral":
                     url = "https://api.mistral.ai/v1/chat/completions"
                     data = {"model": "mistral-small-latest", "messages": [{"role": "user", "content": prompt}], "temperature": 0.3}
+                elif self.api_name == "gemini":
+                    url = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
+                    data = {"model": "gemini-2.0-flash-exp", "messages": [{"role": "user", "content": prompt}], "temperature": 0.3}
                 headers = {"Authorization": "Bearer {0}".format(api_key), "Content-Type": "application/json"}
                 resp = requests.post(url, json=data, headers=headers, timeout=30)
                 if resp.status_code == 200:
