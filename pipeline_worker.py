@@ -237,8 +237,28 @@ class Pipeline:
             print("  [已存在，跳過下載]")
             return shared_path
         
+        shared_downloaded = get_shared_downloaded()
+        if url in shared_downloaded:
+            print("  [已存在，跳過下載]")
+            return shared_path
+        
+        lock_file = SHARED_DOWNLOADS_DIR / (fname + ".lock")
+        if lock_file.exists():
+            print("  [其他程序在下載中，等待...]")
+            for _ in range(60):
+                time.sleep(1)
+                if shared_path.exists():
+                    print("  [下載完成]")
+                    return shared_path
+                if not lock_file.exists():
+                    break
+            if not shared_path.exists():
+                lock_file.unlink()
+        
         tmp_path = self.temp_dir / fname
         try:
+            with open(lock_file, "w") as lf:
+                lf.write(url)
             encoded_url = urllib.parse.quote(url, safe=':/?&=#')
             req = urllib.request.Request(encoded_url, headers=HEADERS)
             with urllib.request.urlopen(req, timeout=60) as resp:
@@ -258,13 +278,19 @@ class Pipeline:
                 print()
                 if downloaded < 1000:
                     tmp_path.unlink()
+                    lock_file.unlink()
                     return None
                 shutil.copy2(tmp_path, shared_path)
                 mark_shared_downloaded(url)
+                lock_file.unlink()
                 return shared_path
         except Exception as e:
             print()
             self.log("下載失敗: {0}".format(e))
+            try:
+                lock_file.unlink()
+            except:
+                pass
             return None
 
     def extract_nodes(self, blend_path):
