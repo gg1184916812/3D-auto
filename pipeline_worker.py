@@ -21,6 +21,17 @@ REPOS_WITH_GEONODES = [
     "al1brn/geonodes",
     "vevenom/pytorchgeonodes",
     "rbarbosa51/GeometryNodesByTutorials",
+    "cgvirus/blender-geometry-nodes-collection",
+    "Rideu/generative-blender",
+    "IRCSS/Blender-Geometry-Node-French-Houses",
+    "IRCSS/Trees-With-Geometry-Nodes-Blender",
+    "RanmanEmpire/RM_SubdivisionSurface",
+    "RanmanEmpire/RM_CurveMorph",
+    "fletchgraham/fletchnodes",
+    "Tams3d/T3D-GN-Presets",
+    "BlenderDev/blender-geometry-nodes",
+    "MACHIN3tools/MACHIN3",
+    "simo-esi/Blender-Geometry-Nodes-Collection",
 ]
 
 KNOWN_WORKING_URLS = [
